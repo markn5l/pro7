@@ -5,6 +5,7 @@ export interface MenuItem {
   price: number;
   photo: string;
   category: string;
+  department: 'kitchen' | 'bar';
   available: boolean;
   preparation_time: number;
   ingredients: string;

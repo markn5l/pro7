@@ -7,10 +7,11 @@ A comprehensive platform where restaurant owners can create and manage their own
 ### For Restaurant Owners (Admin Panel)
 - **User Authentication**: Secure login/register system
 - **Menu Management**: Add, edit, delete menu items and categories
+- **Department Management**: Assign menu items to Kitchen or Bar departments
 - **Order Management**: View and manage all orders in real-time
 - **Analytics Dashboard**: Track revenue, popular items, and customer insights
 - **Bill Generation**: Automatic invoice creation for orders
-- **Telegram Integration**: Receive orders directly in Telegram
+- **Telegram Integration**: Receive orders with approve/reject buttons, route to Kitchen/Bar
 - **Multi-table Support**: Handle multiple tables with unique URLs
 
 ### For Customers
@@ -24,6 +25,7 @@ A comprehensive platform where restaurant owners can create and manage their own
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS
 - **Backend**: Firebase (Firestore, Auth, Storage)
+- **Notifications**: Telegram Bot API with inline keyboards
 - **Deployment**: Vercel
 - **Charts**: Recharts
 - **Icons**: Lucide React

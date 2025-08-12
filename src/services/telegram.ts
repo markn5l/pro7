@@ -76,7 +76,11 @@ ${orderItems}
 📸 <b>Payment Screenshot Attached</b>
     `.trim();
 
-    return this.sendPhoto(screenshot, caption);
+    // Send photo first
+    await this.sendPhoto(screenshot, caption);
+    
+    // Then send message with approve/reject buttons
+    const paymentMessage = `
   }
   async sendWaiterCall(tableNumber: string): Promise<boolean> {
     const message = `📞 <b>Table ${tableNumber} is calling the waiter</b>\n🕐 ${new Date().toLocaleString()}`;
@@ -114,9 +118,33 @@ ${topItems}
 
 📞 <b>Waiter Calls:</b> ${summary.waiterCalls}
 💸 <b>Bill Requests:</b> ${summary.billRequests}
+
     `.trim();
+    
+    const buttons = [
+      [
+        { text: '✅ Accept Payment', callback_data: `approve_payment_${order.id}` },
+        { text: '❌ Reject Payment', callback_data: `reject_payment_${order.id}` }
+      ]
+    ];
+    
+    return this.sendMessageWithButtons(GROUP_CHAT_ID, paymentMessage, buttons);
+  }
+
+  async sendPaymentConfirmationWithButtons(confirmationId: string, tableNumber: string, total: number, method: string): Promise<boolean> {
+    const message = `
+
 
     return this.sendMessage(message);
+    
+    const buttons = [
+      [
+        { text: '✅ Accept Payment', callback_data: `approve_payment_${confirmationId}` },
+        { text: '❌ Reject Payment', callback_data: `reject_payment_${confirmationId}` }
+      ]
+    ];
+    
+    return this.sendMessageWithButtons(GROUP_CHAT_ID, message, buttons);
   }
 }
 

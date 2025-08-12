@@ -172,7 +172,15 @@ export const MenuPage: React.FC = () => {
           status: 'pending' as const
         };
 
-        await firebaseService.addPaymentConfirmation(paymentConfirmation);
+        const confirmationId = await firebaseService.addPaymentConfirmation(paymentConfirmation);
+        
+        // Send to Telegram with approve/reject buttons
+        await telegramService.sendPaymentConfirmationWithButtons(
+          confirmationId,
+          tableBill.tableNumber,
+          tableBill.total,
+          paymentData.method
+        );
         
         setShowPayment(false);
         setTimeout(() => setShowFeedback(true), 2000);
@@ -213,7 +221,15 @@ export const MenuPage: React.FC = () => {
           orderId: pendingOrderId
         };
 
-        await firebaseService.addPaymentConfirmation(paymentConfirmation);
+        const confirmationId = await firebaseService.addPaymentConfirmation(paymentConfirmation);
+        
+        // Send to Telegram with approve/reject buttons
+        await telegramService.sendPaymentConfirmationWithButtons(
+          confirmationId,
+          tableNumber || '1',
+          getTotalAmount() * 1.15,
+          paymentData.method
+        );
         
         clearCart();
         setShowPayment(false);

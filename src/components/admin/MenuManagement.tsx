@@ -179,6 +179,11 @@ export const MenuManagement: React.FC = () => {
                   <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
                     {item.category}
                   </span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    item.department === 'kitchen' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {item.department}
+                  </span>
                   <div className="flex space-x-2">
                     <button
                       onClick={() => setEditingItem(item)}
@@ -396,6 +401,23 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, categories, userId, onClose
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Department *
+              </label>
+              <select
+                value={formData.department || 'kitchen'}
+                onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value as 'kitchen' | 'bar' }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                required
+              >
+                <option value="kitchen">Kitchen</option>
+                <option value="bar">Bar</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Preparation Time (minutes)
               </label>
               <input
@@ -405,7 +427,6 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, categories, userId, onClose
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

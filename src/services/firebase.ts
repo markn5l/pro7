@@ -52,6 +52,7 @@ class FirebaseService {
   }
 
   async updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<void> {
+        department: formData.department || 'kitchen',
     try {
       await updateDoc(doc(db, 'menuItems', id), {
         ...updates,
@@ -161,6 +162,42 @@ class FirebaseService {
       };
       const orderId = await this.addOrder(approvedOrder);
       await this.addToTableBill(pendingOrder.userId, pendingOrder.tableNumber, pendingOrder.items);
+      
+      // Send order to appropriate departments
+      const { telegramService } = await import('./telegram');
+      const menuItems = await this.getMenuItems(pendingOrder.userId);
+      
+      // Group items by department
+      const kitchenItems = [];
+      const barItems = [];
+      
+      for (const orderItem of pendingOrder.items) {
+        const menuItem = menuItems.find(mi => mi.id === orderItem.id);
+        if (menuItem?.department === 'bar') {
+          barItems.push({ ...orderItem, department: 'bar' });
+        } else {
+          kitchenItems.push({ ...orderItem, department: 'kitchen' });
+        }
+      }
+      
+      // Send to kitchen if has kitchen items
+      if (kitchenItems.length > 0) {
+        await telegramService.sendOrderToDepartment({
+          ...approvedOrder,
+          id: orderId,
+          items: kitchenItems
+        }, 'kitchen');
+      }
+      
+      // Send to bar if has bar items
+      if (barItems.length > 0) {
+        await telegramService.sendOrderToDepartment({
+          ...approvedOrder,
+          id: orderId,
+          items: barItems
+        }, 'bar');
+      }
+      
       await deleteDoc(doc(db, 'pendingOrders', pendingOrderId));
       return orderId;
     } catch (error) {
