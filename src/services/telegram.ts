@@ -81,9 +81,25 @@ ${orderItems}
     
     // Then send message with approve/reject buttons
     const paymentMessage = `
+💳 <b>Payment Verification Needed - Table ${order.tableNumber}</b>
+
+💰 <b>Amount: $${order.totalAmount.toFixed(2)}</b>
+💳 <b>Method:</b> ${paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Mobile Money'}
+🕐 <b>Time:</b> ${new Date(order.timestamp).toLocaleString()}
+    `.trim();
+
+    const buttons = [
+      [
+        { text: '✅ Accept Payment', callback_data: `approve_payment_${order.id}` },
+        { text: '❌ Reject Payment', callback_data: `reject_payment_${order.id}` }
+      ]
+    ];
+    
+    return this.sendMessageWithButtons(GROUP_CHAT_ID, paymentMessage, buttons);
   }
+
   async sendWaiterCall(tableNumber: string): Promise<boolean> {
-    const message = \`📞 <b>Table ${tableNumber} is calling the waiter</b>\n🕐 ${new Date().toLocaleString()}`;
+    const message = `📞 <b>Table ${tableNumber} is calling the waiter</b>\n🕐 ${new Date().toLocaleString()}`;
     return this.sendMessage(message);
   }
 
@@ -118,36 +134,46 @@ ${topItems}
 
 📞 <b>Waiter Calls:</b> ${summary.waiterCalls}
 💸 <b>Bill Requests:</b> ${summary.billRequests}
-
     `.trim();
     
-    const buttons = [
-      [
-        { text: '✅ Accept Payment', callback_data: `approve_payment_${order.id}` },
-        { text: '❌ Reject Payment', callback_data: `reject_payment_${order.id}` }
-      ]
-    ];
-    
-    return this.sendMessageWithButtons(GROUP_CHAT_ID, paymentMessage, buttons);
+    return this.sendMessage(message);
   }
 
   async sendPaymentConfirmationWithButtons(confirmationId: string, tableNumber: string, total: number, method: string): Promise<boolean> {
     const message = `
+💳 <b>Payment Verification Needed - Table ${tableNumber}</b>
 
-
-    return this.sendMessage(message);
+💰 <b>Amount: $${total.toFixed(2)}</b>
+💳 <b>Method:</b> ${method === 'bank_transfer' ? 'Bank Transfer' : 'Mobile Money'}
+🕐 <b>Time:</b> ${new Date().toLocaleString()}
+    `.trim();
     
     const buttons = [
       [
-        { text: '✅ Accept Payment', callback_data: \`approve_payment_${confirmationId}` },
+        { text: '✅ Accept Payment', callback_data: `approve_payment_${confirmationId}` },
         { text: '❌ Reject Payment', callback_data: `reject_payment_${confirmationId}` }
       ]
     ];
     
     return this.sendMessageWithButtons(GROUP_CHAT_ID, message, buttons);
   }
+
+  private async sendMessageWithButtons(chatId: number, message: string, buttons: any[]): Promise<boolean> {
+    try {
+      const response = await axios.post(`${TELEGRAM_API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: buttons
+        }
+      });
+      return response.data.ok;
+    } catch (error) {
+      console.error('Error sending message with buttons:', error);
+      return false;
+    }
+  }
 }
 
 export const telegramService = new TelegramService();
-  }
-}
