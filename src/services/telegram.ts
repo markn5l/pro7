@@ -83,7 +83,7 @@ ${orderItems}
     const paymentMessage = `
   }
   async sendWaiterCall(tableNumber: string): Promise<boolean> {
-    const message = `📞 <b>Table ${tableNumber} is calling the waiter</b>\n🕐 ${new Date().toLocaleString()}`;
+    const message = \`📞 <b>Table ${tableNumber} is calling the waiter</b>\n🕐 ${new Date().toLocaleString()}`;
     return this.sendMessage(message);
   }
 
@@ -139,7 +139,7 @@ ${topItems}
     
     const buttons = [
       [
-        { text: '✅ Accept Payment', callback_data: `approve_payment_${confirmationId}` },
+        { text: '✅ Accept Payment', callback_data: \`approve_payment_${confirmationId}` },
         { text: '❌ Reject Payment', callback_data: `reject_payment_${confirmationId}` }
       ]
     ];
@@ -149,3 +149,5 @@ ${topItems}
 }
 
 export const telegramService = new TelegramService();
+  }
+}
