@@ -266,7 +266,77 @@ class FirebaseService {
       throw error;
     }
   }
+// Add this to your FirebaseService class
+async getMenuStats(userId: string): Promise<MenuStats> {
+  try {
+    const [orders, menuItems] = await Promise.all([
+      this.getOrders(userId),
+      this.getMenuItems(userId)
+    ]);
 
+    // Calculate stats
+    const totalOrders = orders.length;
+    const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const totalViews = menuItems.reduce((sum, item) => sum + (item.views || 0), 0);
+
+    // Calculate popular items
+    const itemOrderCounts: Record<string, { name: string; orders: number }> = {};
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        if (!itemOrderCounts[item.id]) {
+          const menuItem = menuItems.find(mi => mi.id === item.id);
+          itemOrderCounts[item.id] = {
+            name: menuItem?.name || item.name,
+            orders: 0
+          };
+        }
+        itemOrderCounts[item.id].orders += item.quantity;
+      });
+    });
+
+    const popularItems = Object.entries(itemOrderCounts)
+      .map(([id, data]) => ({ id, ...data }))
+      .sort((a, b) => b.orders - a.orders)
+      .slice(0, 5);
+
+    // Calculate monthly revenue
+    const monthlyRevenue = this.calculateMonthlyRevenue(orders);
+
+    return {
+      totalOrders,
+      totalRevenue,
+      totalViews,
+      popularItems,
+      recentOrders: orders.slice(0, 10),
+      monthlyRevenue,
+    };
+  } catch (error) {
+    console.error('Error calculating menu stats:', error);
+    return {
+      totalOrders: 0,
+      totalRevenue: 0,
+      totalViews: 0,
+      popularItems: [],
+      recentOrders: [],
+      monthlyRevenue: [],
+    };
+  }
+}
+
+private calculateMonthlyRevenue(orders: Order[]): Array<{ month: string; revenue: number }> {
+  const monthlyData: Record<string, number> = {};
+
+  orders.forEach(order => {
+    const date = new Date(order.timestamp);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    monthlyData[monthKey] = (monthlyData[monthKey] || 0) + order.totalAmount;
+  });
+
+  return Object.entries(monthlyData)
+    .map(([month, revenue]) => ({ month, revenue }))
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .slice(-6); // Last 6 months
+}
   async uploadImage(file: File, path: string): Promise<string> {
     try {
       const storageRef = ref(storage, path);
