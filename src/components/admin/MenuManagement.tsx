@@ -5,7 +5,7 @@ import { firebaseService } from '../../services/firebase';
 import { imgbbService } from '../../services/imgbb';
 import { MenuItem, Category } from '../../types';
 
-export const MenuManagement: React.FC = () => {
+  const MenuManagement: React.FC = () => {
   const { user } = useAuth();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -634,3 +634,4 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ category, userId, onClose
     </div>
   );
 };
+export default MenuManagement; 
