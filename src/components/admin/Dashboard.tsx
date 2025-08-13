@@ -83,6 +83,7 @@ export const Dashboard: React.FC = () => {
     try {
       const pending = pendingOrders.find(p => p.id === pendingOrderId);
       if (!pending) return;
+      
       await firebaseService.approvePendingOrder(pendingOrderId, pending);
       await loadDashboardData();
       alert('Order approved');

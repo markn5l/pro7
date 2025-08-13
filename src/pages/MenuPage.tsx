@@ -116,12 +116,12 @@ export const MenuPage: React.FC = () => {
       userId: userId || '',
       items: cartItems,
       totalAmount: getTotalAmount(),
+      timestamp: new Date().toISOString(),
     };
 
     analytics.trackOrder({ 
       id: 'temp', 
       ...pendingOrderData, 
-      timestamp: new Date().toISOString(),
       status: 'pending_approval',
       paymentStatus: 'pending'
     });
@@ -130,20 +130,19 @@ export const MenuPage: React.FC = () => {
       const pendingOrderId = await firebaseService.addPendingOrder(pendingOrderData);
       setLastOrderId(pendingOrderId);
       
-      await telegramService.sendOrderNotification({ 
+      // Send pending order with approve/reject buttons
+      await telegramService.sendPendingOrderWithButtons({ 
         id: pendingOrderId, 
-        ...pendingOrderData, 
-        timestamp: new Date().toISOString(),
-        status: 'pending_approval',
-        paymentStatus: 'pending'
+        ...pendingOrderData
       });
+      
       clearCart();
       setShowCart(false);
       setTimeout(() => setShowFeedback(true), 2000);
       alert('Order submitted for approval! You will be notified once approved.');
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('Order submitted! (Note: Telegram notification may have failed)');
+      alert('Failed to place order. Please try again.');
     }
   };
 

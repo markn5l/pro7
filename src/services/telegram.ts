@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Order } from '../types';
+import { Order, PendingOrder, OrderItem } from '../types';
 
 const BOT_TOKEN = '1941939105:AAHJ9XhL9uRyzQ9uhi3F4rKAQIbQ9D7YRs8'; // Replace with your actual bot token
 const GROUP_CHAT_ID = -1002701066037;  // Target user ID
@@ -24,7 +24,7 @@ class TelegramService {
   async sendPhoto(photo: File, caption: string): Promise<boolean> {
     try {
       const formData = new FormData();
-      formData.append('chat_id', GROUP_CHAT_ID);
+      formData.append('chat_id', GROUP_CHAT_ID.toString());
       formData.append('photo', photo);
       formData.append('caption', caption);
       formData.append('parse_mode', 'HTML');
@@ -40,6 +40,68 @@ class TelegramService {
       console.error('Error sending Telegram photo:', error);
       return false;
     }
+  }
+
+  async sendPendingOrderWithButtons(pendingOrder: PendingOrder): Promise<boolean> {
+    const orderItems = pendingOrder.items
+      .map(item => `• ${item.name} x${item.quantity} - $${item.total.toFixed(2)}`)
+      .join('\n');
+
+    const message = `
+🍽️ <b>New Order Pending Approval - Table ${pendingOrder.tableNumber}</b>
+
+${orderItems}
+
+💰 <b>Total: $${pendingOrder.totalAmount.toFixed(2)}</b>
+🕐 <b>Time:</b> ${new Date(pendingOrder.timestamp).toLocaleString()}
+
+⚠️ <b>Awaiting approval...</b>
+    `.trim();
+
+    const buttons = [
+      [
+        { text: '✅ Approve Order', callback_data: `approve_order_${pendingOrder.id}` },
+        { text: '❌ Reject Order', callback_data: `reject_order_${pendingOrder.id}` }
+      ]
+    ];
+
+    return this.sendMessageWithButtons(GROUP_CHAT_ID, message, buttons);
+  }
+
+  async sendOrderToDepartment(order: Order, department: 'kitchen' | 'bar'): Promise<boolean> {
+    const departmentItems = order.items.filter(item => {
+      // Filter items based on department
+      return (item as any).department === department;
+    });
+
+    if (departmentItems.length === 0) return true;
+
+    const orderItems = departmentItems
+      .map(item => `• ${item.name} x${item.quantity}`)
+      .join('\n');
+
+    const emoji = department === 'kitchen' ? '👨‍🍳' : '🍹';
+    const departmentName = department === 'kitchen' ? 'Kitchen' : 'Bar';
+
+    const message = `
+${emoji} <b>${departmentName} Order - Table ${order.tableNumber}</b>
+
+${orderItems}
+
+🕐 <b>Time:</b> ${new Date(order.timestamp).toLocaleString()}
+📋 <b>Order ID:</b> ${order.id.slice(0, 8)}
+
+<b>Status: APPROVED - Start Preparation</b>
+    `.trim();
+
+    const buttons = [
+      [
+        { text: '✅ Ready', callback_data: `ready_${department}_${order.id}` },
+        { text: '⏰ Delay', callback_data: `delay_${department}_${order.id}` }
+      ]
+    ];
+
+    return this.sendMessageWithButtons(GROUP_CHAT_ID, message, buttons);
   }
 
   async sendOrderNotification(order: Order): Promise<boolean> {

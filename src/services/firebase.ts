@@ -154,21 +154,27 @@ class FirebaseService {
 
   async approvePendingOrder(pendingOrderId: string, pendingOrder: PendingOrder): Promise<string> {
     try {
+      // First, get menu items to determine departments
+      const menuItems = await this.getMenuItems(pendingOrder.userId);
+      
       const approvedOrder: Omit<Order, 'id'> = {
         ...pendingOrder,
         status: 'approved',
         paymentStatus: 'pending',
       };
+      
+      // Add the order to orders collection
       const orderId = await this.addOrder(approvedOrder);
+      
+      // Add items to table bill
       await this.addToTableBill(pendingOrder.userId, pendingOrder.tableNumber, pendingOrder.items);
       
       // Send order to appropriate departments
       const { telegramService } = await import('./telegram');
-      const menuItems = await this.getMenuItems(pendingOrder.userId);
       
       // Group items by department
-      const kitchenItems = [];
-      const barItems = [];
+      const kitchenItems: (OrderItem & { department: string })[] = [];
+      const barItems: (OrderItem & { department: string })[] = [];
       
       for (const orderItem of pendingOrder.items) {
         const menuItem = menuItems.find(mi => mi.id === orderItem.id);
@@ -197,6 +203,7 @@ class FirebaseService {
         }, 'bar');
       }
       
+      // Remove the pending order
       await deleteDoc(doc(db, 'pendingOrders', pendingOrderId));
       return orderId;
     } catch (error) {
