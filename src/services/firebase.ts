@@ -154,9 +154,6 @@ class FirebaseService {
 
   async approvePendingOrder(pendingOrderId: string, pendingOrder: PendingOrder): Promise<string> {
     try {
-      // First, get menu items to determine departments
-      const menuItems = await this.getMenuItems(pendingOrder.userId);
-      
       const approvedOrder: Omit<Order, 'id'> = {
         ...pendingOrder,
         status: 'approved',
@@ -169,45 +166,48 @@ class FirebaseService {
       // Add items to table bill
       await this.addToTableBill(pendingOrder.userId, pendingOrder.tableNumber, pendingOrder.items);
       
-      // Send order to appropriate departments
-      const { telegramService } = await import('./telegram');
-      
-      // Group items by department
-      const kitchenItems: (OrderItem & { department: string })[] = [];
-      const barItems: (OrderItem & { department: string })[] = [];
-      
-      for (const orderItem of pendingOrder.items) {
-        const menuItem = menuItems.find(mi => mi.id === orderItem.id);
-        if (menuItem?.department === 'bar') {
-          barItems.push({ ...orderItem, department: 'bar' });
-        } else {
-          kitchenItems.push({ ...orderItem, department: 'kitchen' });
-        }
-      }
-      
-      // Send to kitchen if has kitchen items
-      if (kitchenItems.length > 0) {
-        await telegramService.sendOrderToDepartment({
-          ...approvedOrder,
-          id: orderId,
-          items: kitchenItems
-        }, 'kitchen');
-      }
-      
-      // Send to bar if has bar items
-      if (barItems.length > 0) {
-        await telegramService.sendOrderToDepartment({
-          ...approvedOrder,
-          id: orderId,
-          items: barItems
-        }, 'bar');
-      }
+      // Send order to appropriate departments after approval
+      await this.sendOrderToDepartments(orderId, { ...approvedOrder, id: orderId }, pendingOrder.userId);
       
       // Remove the pending order
       await deleteDoc(doc(db, 'pendingOrders', pendingOrderId));
       return orderId;
     } catch (error) {
       console.error('Error approving pending order:', error);
+      throw error;
+    }
+  }
+
+  async sendOrderToDepartments(orderId: string, order: Order, userId: string): Promise<void> {
+    try {
+      // Get menu items to determine departments
+      const menuItems = await this.getMenuItems(userId);
+      const { telegramService } = await import('./telegram');
+      
+      // Group items by department
+      const kitchenItems: OrderItem[] = [];
+      const barItems: OrderItem[] = [];
+      
+      for (const orderItem of order.items) {
+        const menuItem = menuItems.find(mi => mi.id === orderItem.id);
+        if (menuItem?.department === 'bar') {
+          barItems.push(orderItem);
+        } else {
+          kitchenItems.push(orderItem);
+        }
+      }
+      
+      // Send to kitchen if has kitchen items
+      if (kitchenItems.length > 0) {
+        await telegramService.sendOrderToDepartment(order, 'kitchen', kitchenItems);
+      }
+      
+      // Send to bar if has bar items
+      if (barItems.length > 0) {
+        await telegramService.sendOrderToDepartment(order, 'bar', barItems);
+      }
+    } catch (error) {
+      console.error('Error sending order to departments:', error);
       throw error;
     }
   }

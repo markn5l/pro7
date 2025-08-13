@@ -86,10 +86,10 @@ export const Dashboard: React.FC = () => {
       
       await firebaseService.approvePendingOrder(pendingOrderId, pending);
       await loadDashboardData();
-      alert('Order approved');
+      alert('Order approved and sent to kitchen/bar!');
     } catch (error) {
       console.error('Error approving order:', error);
-      alert('Failed to approve order');
+      alert('Failed to approve order: ' + (error as Error).message);
     }
   };
 
@@ -97,10 +97,10 @@ export const Dashboard: React.FC = () => {
     try {
       await firebaseService.rejectPendingOrder(pendingOrderId);
       await loadDashboardData();
-      alert('Order rejected');
+      alert('Order rejected and removed');
     } catch (error) {
       console.error('Error rejecting order:', error);
-      alert('Failed to reject order');
+      alert('Failed to reject order: ' + (error as Error).message);
     }
   };
 

@@ -2,14 +2,16 @@ import axios from 'axios';
 import { Order, PendingOrder, OrderItem } from '../types';
 
 const BOT_TOKEN = '1941939105:AAHJ9XhL9uRyzQ9uhi3F4rKAQIbQ9D7YRs8'; // Replace with your actual bot token
-const GROUP_CHAT_ID = -1002701066037;  // Target user ID
+const ADMIN_CHAT_ID = -1002701066037;  // Admin notifications
+const KITCHEN_CHAT_ID = -1002660493020; // Kitchen orders
+const BAR_CHAT_ID = -1002859150516;     // Bar orders
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 class TelegramService {
-  async sendMessage(message: string): Promise<boolean> {
+  async sendMessage(message: string, chatId: number = ADMIN_CHAT_ID): Promise<boolean> {
     try {
       const response = await axios.post(`${TELEGRAM_API_URL}/sendMessage`, {
-        chat_id: GROUP_CHAT_ID,
+        chat_id: chatId,
         text: message,
         parse_mode: 'HTML',
       });
@@ -21,10 +23,10 @@ class TelegramService {
     }
   }
 
-  async sendPhoto(photo: File, caption: string): Promise<boolean> {
+  async sendPhoto(photo: File, caption: string, chatId: number = ADMIN_CHAT_ID): Promise<boolean> {
     try {
       const formData = new FormData();
-      formData.append('chat_id', GROUP_CHAT_ID.toString());
+      formData.append('chat_id', chatId.toString());
       formData.append('photo', photo);
       formData.append('caption', caption);
       formData.append('parse_mode', 'HTML');
@@ -65,23 +67,19 @@ ${orderItems}
       ]
     ];
 
-    return this.sendMessageWithButtons(GROUP_CHAT_ID, message, buttons);
+    return this.sendMessageWithButtons(ADMIN_CHAT_ID, message, buttons);
   }
 
-  async sendOrderToDepartment(order: Order, department: 'kitchen' | 'bar'): Promise<boolean> {
-    const departmentItems = order.items.filter(item => {
-      // Filter items based on department
-      return (item as any).department === department;
-    });
-
+  async sendOrderToDepartment(order: Order, department: 'kitchen' | 'bar', departmentItems: OrderItem[]): Promise<boolean> {
     if (departmentItems.length === 0) return true;
+
+    const chatId = department === 'kitchen' ? KITCHEN_CHAT_ID : BAR_CHAT_ID;
+    const emoji = department === 'kitchen' ? '👨‍🍳' : '🍹';
+    const departmentName = department === 'kitchen' ? 'Kitchen' : 'Bar';
 
     const orderItems = departmentItems
       .map(item => `• ${item.name} x${item.quantity}`)
       .join('\n');
-
-    const emoji = department === 'kitchen' ? '👨‍🍳' : '🍹';
-    const departmentName = department === 'kitchen' ? 'Kitchen' : 'Bar';
 
     const message = `
 ${emoji} <b>${departmentName} Order - Table ${order.tableNumber}</b>
@@ -101,7 +99,7 @@ ${orderItems}
       ]
     ];
 
-    return this.sendMessageWithButtons(GROUP_CHAT_ID, message, buttons);
+    return this.sendMessageWithButtons(chatId, message, buttons);
   }
 
   async sendOrderNotification(order: Order): Promise<boolean> {
@@ -118,7 +116,7 @@ ${orderItems}
 🕐 <b>Time:</b> ${new Date(order.timestamp).toLocaleString()}
     `.trim();
 
-    return this.sendMessage(message);
+    return this.sendMessage(message, ADMIN_CHAT_ID);
   }
 
   async sendPaymentConfirmation(order: Order, paymentMethod: string, screenshot: File): Promise<boolean> {
@@ -139,7 +137,7 @@ ${orderItems}
     `.trim();
 
     // Send photo first
-    await this.sendPhoto(screenshot, caption);
+    await this.sendPhoto(screenshot, caption, ADMIN_CHAT_ID);
     
     // Then send message with approve/reject buttons
     const paymentMessage = `
@@ -157,17 +155,17 @@ ${orderItems}
       ]
     ];
     
-    return this.sendMessageWithButtons(GROUP_CHAT_ID, paymentMessage, buttons);
+    return this.sendMessageWithButtons(ADMIN_CHAT_ID, paymentMessage, buttons);
   }
 
   async sendWaiterCall(tableNumber: string): Promise<boolean> {
     const message = `📞 <b>Table ${tableNumber} is calling the waiter</b>\n🕐 ${new Date().toLocaleString()}`;
-    return this.sendMessage(message);
+    return this.sendMessage(message, ADMIN_CHAT_ID);
   }
 
   async sendBillRequest(tableNumber: string): Promise<boolean> {
     const message = `💸 <b>Table ${tableNumber} is requesting the bill</b>\n🕐 ${new Date().toLocaleString()}`;
-    return this.sendMessage(message);
+    return this.sendMessage(message, ADMIN_CHAT_ID);
   }
 
   async sendDailySummary(summary: {
@@ -198,7 +196,7 @@ ${topItems}
 💸 <b>Bill Requests:</b> ${summary.billRequests}
     `.trim();
     
-    return this.sendMessage(message);
+    return this.sendMessage(message, ADMIN_CHAT_ID);
   }
 
   async sendPaymentConfirmationWithButtons(confirmationId: string, tableNumber: string, total: number, method: string): Promise<boolean> {
@@ -217,7 +215,31 @@ ${topItems}
       ]
     ];
     
-    return this.sendMessageWithButtons(GROUP_CHAT_ID, message, buttons);
+    return this.sendMessageWithButtons(ADMIN_CHAT_ID, message, buttons);
+  }
+
+  // New method to handle Telegram callback responses (for bot webhook)
+  async handleTelegramCallback(callbackData: string, pendingOrders: any[], firebaseService: any): Promise<boolean> {
+    try {
+      if (callbackData.startsWith('approve_order_')) {
+        const orderId = callbackData.replace('approve_order_', '');
+        const pendingOrder = pendingOrders.find(p => p.id === orderId);
+        
+        if (pendingOrder) {
+          await firebaseService.approvePendingOrder(orderId, pendingOrder);
+          return true;
+        }
+      } else if (callbackData.startsWith('reject_order_')) {
+        const orderId = callbackData.replace('reject_order_', '');
+        await firebaseService.rejectPendingOrder(orderId);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error handling Telegram callback:', error);
+      return false;
+    }
   }
 
   private async sendMessageWithButtons(chatId: number, message: string, buttons: any[]): Promise<boolean> {

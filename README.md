@@ -39,7 +39,16 @@ A comprehensive platform where restaurant owners can create and manage their own
 4. Enable Storage
 5. Get your Firebase config
 
-### 2. Environment Variables
+### 2. Telegram Bot Setup
+1. Create a bot with @BotFather on Telegram
+2. Get your bot token
+3. Set up webhook URL: `https://your-domain.com/api/telegram-webhook`
+4. Configure chat IDs:
+   - Admin chat: -1002701066037
+   - Kitchen chat: -1002660493020
+   - Bar chat: -1002859150516
+
+### 3. Environment Variables
 Create a `.env` file in the root directory:
 
 ```env
@@ -51,20 +60,21 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 ```
 
-### 3. Install Dependencies
+### 4. Install Dependencies
 ```bash
 npm install
 ```
 
-### 4. Development
+### 5. Development
 ```bash
 npm run dev
 ```
 
-### 5. Deploy to Vercel
+### 6. Deploy to Vercel
 1. Connect your GitHub repository to Vercel
 2. Add environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
+4. Set up Telegram webhook: `https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=https://your-vercel-app.vercel.app/api/telegram-webhook`
 
 ## Usage
 
