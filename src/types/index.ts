@@ -30,6 +30,7 @@ export interface OrderItem {
   id: string;
   name: string;
   price: number;
+  department: 'kitchen' | 'bar';
   quantity: number;
   total: number;
 }
