@@ -52,7 +52,6 @@ class FirebaseService {
   }
 
   async updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<void> {
-        department: formData.department || 'kitchen',
     try {
       await updateDoc(doc(db, 'menuItems', id), {
         ...updates,
