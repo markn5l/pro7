@@ -23,29 +23,104 @@ class FirebaseService {
   // =======================
   // Menu Items
   // =======================
-  async getMenuItems(userId: string): Promise<MenuItem[]> {
-    try {
-      const q = query(
-        collection(db, 'menuItems'), 
-        where('userId', '==', userId)
-      );
-      const snapshot = await getDocs(q);
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-      return items.sort((a, b) => a.category.localeCompare(b.category));
-    } catch (error) {
-      console.error('Error fetching menu items:', error);
-      return [];
+ async getMenuItems(userId: string): Promise<MenuItem[]> {
+    const q = query(
+      collection(db, 'menuItems'), 
+      where('userId', '==', userId)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      department: doc.data().department || 'kitchen', // Default to kitchen
+      ...doc.data() 
+    } as MenuItem));
+  }
+ // =======================
+  // Order Approval with Department Splitting (NEW)
+  // =======================
+  async approvePendingOrder(pendingOrderId: string, pendingOrder: PendingOrder): Promise<string> {
+    // 1. Create the main approved order
+    const approvedOrder: Omit<Order, 'id'> = {
+      ...pendingOrder,
+      status: 'approved',
+      paymentStatus: 'pending',
+      timestamp: Timestamp.now()
+    };
+    const orderId = await this.addOrder(approvedOrder);
+
+    // 2. Split items by department
+    const menuItems = await this.getMenuItems(pendingOrder.userId);
+    const { kitchenItems, barItems } = this.splitItemsByDepartment(pendingOrder.items, menuItems);
+
+    // 3. Send to respective departments
+    if (kitchenItems.length > 0) {
+      await this.sendToDepartment(orderId, kitchenItems, 'kitchen');
     }
+    if (barItems.length > 0) {
+      await this.sendToDepartment(orderId, barItems, 'bar');
+    }
+
+    // 4. Update table bill and clean up
+    await this.addToTableBill(pendingOrder.userId, pendingOrder.tableNumber, pendingOrder.items);
+    await deleteDoc(doc(db, 'pendingOrders', pendingOrderId));
+    
+    return orderId;
   }
 
+  private splitItemsByDepartment(items: OrderItem[], menuItems: MenuItem[]) {
+    const kitchenItems: OrderItem[] = [];
+    const barItems: OrderItem[] = [];
+
+    items.forEach(item => {
+      const menuItem = menuItems.find(mi => mi.id === item.id);
+      (menuItem?.department === 'bar' ? barItems : kitchenItems).push(item);
+    });
+
+    return { kitchenItems, barItems };
+  }
+
+  private async sendToDepartment(orderId: string, items: OrderItem[], department: 'kitchen' | 'bar') {
+    await addDoc(collection(db, `${department}Orders`), {
+      orderId,
+      items,
+      status: 'pending',
+      createdAt: Timestamp.now(),
+      department
+    });
+  }
+
+  // =======================
+  // Department Order Tracking (NEW)
+  // =======================
+  async getKitchenOrders(userId: string): Promise<Order[]> {
+    const q = query(
+      collection(db, 'kitchenOrders'),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+  }
+
+  async getBarOrders(userId: string): Promise<Order[]> {
+    const q = query(
+      collection(db, 'barOrders'),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+  }
   async addMenuItem(item: Omit<MenuItem, 'id'>): Promise<string> {
-    try {
-      const docRef = await addDoc(collection(db, 'menuItems'), {
-        ...item,
-        created_at: new Date().toISOString(),
-      });
-      return docRef.id;
-    } catch (error) {
+    const docRef = await addDoc(collection(db, 'menuItems'), {
+      department: item.department || 'kitchen', // Default to kitchen
+      ...item,
+      created_at: Timestamp.now()
+    });
+    return docRef.id;
+  }  
+
+   catch (error) {
       console.error('Error adding menu item:', error);
       throw error;
     }
