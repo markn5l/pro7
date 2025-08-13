@@ -5,7 +5,7 @@ import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { Dashboard } from './components/admin/Dashboard';
-import { MenuManagement } from './components/admin/MenuManagement';
+import MenuManagement from './components/admin/MenuManagement';
 import { OrderManagement } from './components/admin/OrderManagement';
 import { BillManagement } from './components/admin/BillManagement';
 import { Analytics } from './components/admin/Analytics';
