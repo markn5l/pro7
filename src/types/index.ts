@@ -21,6 +21,7 @@ export interface Category {
   id: string;
   name: string;
   userId: string;
+  department: 'kitchen' | 'bar';
   order: number;
   created_at: string;
 }
